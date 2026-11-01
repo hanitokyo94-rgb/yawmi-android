@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#f97316">
+<title>يومي — مهامك اليومية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fafaf9; --card:#ffffff; --ink:#1c1917; --sub:#78716c; --line:#e7e5e4;
+  --accent:#f97316; --accent-soft:#ffedd5; --accent-ink:#c2410c;
+  --green:#16a34a; --green-soft:#dcfce7;
+  --hi:#dc2626; --hi-soft:#fee2e2; --med:#d97706; --med-soft:#fef3c7;
+  --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--ink);overscroll-behavior-y:none}
+button{font-family:inherit;border:none;background:none;cursor:pointer}
+.app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding-bottom:88px}
+
+/* ── App Bar ── */
+.appbar{position:sticky;top:0;z-index:20;background:rgba(250,250,249,.92);backdrop-filter:blur(8px);padding:18px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+.appbar h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.appbar .date{font-size:13px;color:var(--sub);margin-top:2px}
+.bell-btn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17px;position:relative}
+.bell-btn .dot{position:absolute;top:8px;left:8px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid #fff}
+
+/* ── Screens ── */
+.screen{display:none;flex:1;padding:4px 20px 20px;animation:fade .25s ease}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── Today hero ── */
+.hero{background:var(--accent);border-radius:20px;padding:24px 22px;color:#fff;margin-bottom:20px}
+.hero .label{font-size:13px;font-weight:500;opacity:.9}
+.hero .big{font-size:52px;font-weight:700;line-height:1.1;margin:6px 0 2px}
+.hero .big small{font-size:20px;font-weight:600;opacity:.85}
+.hero .msg{font-size:14px;font-weight:500;opacity:.95;margin-top:2px}
+.track{height:8px;background:rgba(255,255,255,.28);border-radius:99px;margin-top:16px;overflow:hidden}
+.track .fill{height:100%;background:#fff;border-radius:99px;width:0%;transition:width .5s cubic-bezier(.22,1,.36,1)}
+
+/* ── Section head ── */
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 12px}
+.sec-head h2{font-size:16px;font-weight:700}
+.sec-head .count{font-size:13px;color:var(--sub);font-weight:500}
+
+/* ── Task card ── */
+.task{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;transition:opacity .2s}
+.task.done{opacity:.55}
+.check{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;transition:all .15s}
+.task.done .check{background:var(--green);border-color:var(--green)}
+.t-body{flex:1;min-width:0}
+.t-title{font-size:15px;font-weight:600;word-break:break-word}
+.task.done .t-title{text-decoration:line-through;color:var(--sub)}
+.chips{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px}
+.chip.low{background:#f5f5f4;color:var(--sub)}
+.chip.med{background:var(--med-soft);color:var(--med)}
+.chip.hi{background:var(--hi-soft);color:var(--hi)}
+.chip.time{background:var(--accent-soft);color:var(--accent-ink)}
+.del{width:34px;height:34px;border-radius:10px;color:#c7c2bd;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.del:active{background:#f5f5f4}
+.empty{text-align:center;padding:48px 20px;color:var(--sub)}
+.empty .ico{font-size:40px;margin-bottom:12px}
+.empty p{font-size:14px;line-height:1.7}
+
+/* ── Filters ── */
+.filters{display:flex;gap:8px;margin-bottom:16px}
+.filters button{flex:1;padding:9px 0;border-radius:12px;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--sub)}
+.filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ── Stats ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.stat .v{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.stat .v small{font-size:15px;color:var(--sub);font-weight:600}
+.stat .l{font-size:12.5px;color:var(--sub);margin-top:4px;font-weight:500}
+.stat.accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.stat.accent .l{color:rgba(255,255,255,.85)}
+.card-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.card-block h3{font-size:14px;font-weight:700;margin-bottom:14px}
+.bars{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:120px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bar-col .bar{width:100%;max-width:30px;background:var(--accent-soft);border-radius:8px 8px 4px 4px;min-height:4px;transition:height .4s}
+.bar-col.today .bar{background:var(--accent)}
+.bar-col .pct{font-size:10.5px;font-weight:600;color:var(--sub)}
+.bar-col .day{font-size:11px;color:var(--sub);font-weight:500}
+.streak-row{display:flex;align-items:center;gap:12px}
+.streak-row .fire{font-size:30px}
+.streak-row .sv{font-size:24px;font-weight:700}
+.streak-row .sl{font-size:12.5px;color:var(--sub)}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:30;background:var(--accent);color:#fff;font-size:15px;font-weight:700;padding:15px 28px;border-radius:99px;box-shadow:0 8px 24px rgba(249,115,22,.35);display:flex;align-items:center;gap:8px;transition:transform .15s}
+.fab:active{transform:translateX(-50%) scale(.95)}
+
+/* ── Tab bar ── */
+.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:center;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+.tabbar button{flex:1;max-width:130px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;border-radius:12px;font-size:11px;font-weight:600;color:var(--sub);transition:color .15s}
+.tabbar button .ic{font-size:20px;line-height:1}
+.tabbar button.on{color:var(--accent-ink)}
+
+/* ── Sheet ── */
+.overlay{position:fixed;inset:0;background:rgba(28,25,23,.45);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--card);border-radius:24px 24px 0 0;padding:14px 22px calc(24px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .3s cubic-bezier(.22,1,.36,1);max-width:480px;margin:0 auto}
+.sheet.open{transform:none}
+.grab{width:40px;height:4px;background:var(--line);border-radius:99px;margin:0 auto 18px}
+.sheet h3{font-size:18px;font-weight:700;margin-bottom:18px}
+.field-label{display:block;font-size:13px;font-weight:600;color:var(--sub);margin-bottom:8px}
+.input{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;font-size:15px;font-family:inherit;background:var(--bg);color:var(--ink);outline:none;transition:border-color .15s}
+.input:focus{border-color:var(--accent)}
+.prio-row{display:flex;gap:8px}
+.prio-row button{flex:1;padding:11px 0;border-radius:12px;font-size:13.5px;font-weight:600;background:var(--bg);border:1.5px solid var(--line);color:var(--sub)}
+.prio-row button.on-low{background:#f5f5f4;border-color:var(--ink);color:var(--ink)}
+.prio-row button.on-med{background:var(--med-soft);border-color:var(--med);color:var(--med)}
+.prio-row button.on-hi{background:var(--hi-soft);border-color:var(--hi);color:var(--hi)}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.switch-row .sw-label{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.switch{position:relative;width:46px;height:26px;appearance:none;background:var(--line);border-radius:99px;cursor:pointer;transition:background .2s;flex-shrink:0}
+.switch:checked{background:var(--accent)}
+.switch::after{content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .2s}
+.switch:checked::after{transform:translateX(-20px)}
+.sheet .submit{width:100%;margin-top:20px;background:var(--accent);color:#fff;font-size:15.5px;font-weight:700;padding:15px;border-radius:14px}
+.sheet .submit:active{opacity:.85}
+
+/* ── Notification banner ── */
+.notif-banner{position:fixed;top:14px;left:14px;right:14px;z-index:100;background:#1c1917;color:#fff;border-radius:18px;padding:16px;display:flex;align-items:center;gap:12px;transform:translateY(-130%);transition:transform .35s cubic-bezier(.22,1,.36,1);max-width:452px;margin:0 auto;box-shadow:0 12px 32px rgba(0,0,0,.25)}
+.notif-banner.show{transform:none}
+.notif-banner .n-ico{width:42px;height:42px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.notif-banner .n-body{flex:1;min-width:0}
+.notif-banner .n-title{font-size:12px;font-weight:600;color:#fdba74}
+.notif-banner .n-text{font-size:14px;font-weight:600;margin-top:2px;word-break:break-word}
+.notif-banner .n-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.notif-banner .n-actions button{font-size:12px;font-weight:700;padding:7px 14px;border-radius:10px}
+.notif-banner .n-done{background:var(--green);color:#fff}
+.notif-banner .n-later{background:rgba(255,255,255,.14);color:#fff}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:170px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:11px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:all .25s;z-index:110;white-space:nowrap;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- شريط التذكير -->
+  <div class="notif-banner" id="notifBanner">
+    <div class="n-ico">🔔</div>
+    <div class="n-body">
+      <div class="n-title" id="notifTitle">تذكير من يومي</div>
+      <div class="n-text" id="notifText"></div>
+    </div>
+    <div class="n-actions">
+      <button class="n-done" id="notifDone">تم ✓</button>
+      <button class="n-later" id="notifLater">لاحقًا</button>
+    </div>
+  </div>
+
+  <header class="appbar">
+    <div>
+      <h1 id="barTitle">يومي</h1>
+      <div class="date" id="barDate"></div>
+    </div>
+    <button class="bell-btn" id="bellBtn" title="حالة التذكيرات">🔔<span class="dot" id="bellDot" hidden></span></button>
+  </header>
+
+  <!-- شاشة اليوم -->
+  <main class="screen active" id="screen-today">
+    <div class="hero">
+      <div class="label">إنجاز اليوم</div>
+      <div class="big"><span id="heroDone">0</span><small> / <span id="heroTotal">0</span></small></div>
+      <div class="msg" id="heroMsg"></div>
+      <div class="track"><div class="fill" id="heroFill"></div></div>
+    </div>
+    <div class="sec-head">
+      <h2>مهام اليوم</h2>
+      <span class="count" id="todayCount"></span>
+    </div>
+    <div id="todayList"></div>
+  </main>
+
+  <!-- شاشة مهامي -->
+  <main class="screen" id="screen-all">
+    <div class="filters">
+      <button data-f="all" class="on">الكل</button>
+      <button data-f="pending">قيد التنفيذ</button>
+      <button data-f="done">منجزة</button>
+    </div>
+    <div id="allList"></div>
+  </main>
+
+  <!-- شاشة الإحصائيات -->
+  <main class="screen" id="screen-stats">
+    <div class="stat-grid">
+      <div class="stat accent"><div class="v" id="stTodayPct">0<small>%</small></div><div class="l">إنجاز اليوم</div></div>
+      <div class="stat"><div class="v" id="stTotal">0</div><div class="l">إجمالي المهام</div></div>
+      <div class="stat"><div class="v" id="stDone">0</div><div class="l">مهام منجزة</div></div>
+      <div class="stat"><div class="v" id="stRem">0</div><div class="l">تذكيرات نشطة</div></div>
+    </div>
+    <div class="card-block">
+      <h3>آخر ٧ أيام</h3>
+      <div class="bars" id="weekBars"></div>
+    </div>
+    <div class="card-block">
+      <h3>السلسلة المتتالية</h3>
+      <div class="streak-row">
+        <span class="fire">🔥</span>
+        <div><div class="sv"><span id="stStreak">0</span> يوم</div><div class="sl">أكملت كل مهامك يومًا كاملًا</div></div>
+      </div>
+    </div>
+  </main>
+
+  <button class="fab" id="fabBtn">＋ مهمة جديدة</button>
+
+  <nav class="tabbar">
+    <button data-s="today" class="on"><span class="ic">☀️</span>اليوم</button>
+    <button data-s="all"><span class="ic">📋</span>مهامي</button>
+    <button data-s="stats"><span class="ic">📊</span>إحصائياتي</button>
+  </nav>
+</div>
+
+<!-- نافذة الإضافة -->
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <h3>مهمة جديدة</h3>
+  <label class="field-label">اسم المهمة</label>
+  <input class="input" id="taskText" placeholder="مثال: أذاكر ساعة الرياضيات" maxlength="80">
+  <label class="field-label" style="margin-top:16px">الأهمية</label>
+  <div class="prio-row" id="prioRow">
+    <button data-p="low">عادي</button>
+    <button data-p="med" class="on-med">مهم</button>
+    <button data-p="hi">عاجل</button>
+  </div>
+  <div class="switch-row" style="margin-top:18px">
+    <span class="sw-label">🔔 تذكيرني في وقت محدد</span>
+    <input type="checkbox" class="switch" id="remToggle">
+  </div>
+  <div id="remWrap" hidden style="margin-top:12px">
+    <label class="field-label">وقت التذكير</label>
+    <input type="time" class="input" id="remTime">
+  </div>
+  <button class="submit" id="addBtn">إضافة المهمة</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ===== الحالة والتخزين ===== */
+const KEY='yawmi_tasks_v1';
+let tasks=[]; try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){tasks=[]}
+let filter='all', selPrio='med', currentScreen='today';
+const save=()=>localStorage.setItem(KEY,JSON.stringify(tasks));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const isToday=t=>t.createdAt&&new Date(t.createdAt).toDateString()===new Date().toDateString();
+
+/* ===== التاريخ بالعربية ===== */
+function arDate(){try{return new Date().toLocaleDateString('ar-SA-u-nu-latn',{weekday:'long',day:'numeric',month:'long'})}catch(e){return new Date().toLocaleDateString('ar',{weekday:'long',day:'numeric',month:'long'})}}
+document.getElementById('barDate').textContent=arDate();
+
+/* ===== التنقل ===== */
+const titles={today:'يومي',all:'مهامي',stats:'إحصائياتي'};
+document.querySelectorAll('.tabbar button').forEach(b=>b.addEventListener('click',()=>{
+  currentScreen=b.dataset.s;
+  document.querySelectorAll('.tabbar button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+currentScreen).classList.add('active');
+  document.getElementById('barTitle').textContent=titles[currentScreen];
+  document.getElementById('fabBtn').style.display=currentScreen==='stats'?'none':'flex';
+  render();
+}));
+
+/* ===== الرسم ===== */
+function chipHtml(t){
+  let h='';
+  if(t.priority==='hi')h+='<span class="chip hi">عاجل</span>';
+  else if(t.priority==='med')h+='<span class="chip med">مهم</span>';
+  else h+='<span class="chip low">عادي</span>';
+  if(t.reminder)h+='<span class="chip time">⏰ '+esc(t.reminder)+'</span>';
+  return h;
+}
+function taskCard(t){
+  return '<div class="task'+(t.done?' done':'')+'" data-id="'+t.id+'">'
+    +'<button class="check" data-act="toggle">'+(t.done?'✓':'')+'</button>'
+    +'<div class="t-body"><div class="t-title">'+esc(t.text)+'</div><div class="chips">'+chipHtml(t)+'</div></div>'
+    +'<button class="del" data-act="del">✕</button></div>';
+}
+function render(){
+  /* اليوم */
+  const td=tasks.filter(isToday).sort((a,b)=>(a.done-b.done)||(a.reminder||'99').localeCompare(b.reminder||'99'));
+  const done=td.filter(t=>t.done).length, total=td.length;
+  document.getElementById('heroDone').textContent=done;
+  document.getElementById('heroTotal').textContent=total;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('heroFill').style.width=pct+'%';
+  document.getElementById('heroMsg').textContent=!total?'ابدأ يومك بإضافة أول مهمة ✨':(pct===100?'أنهيت كل شيء. استاهل راحة ☕':(pct>=50?'أنت على الطريق الصحيح، واصل 💪':'بداية اليوم أهم من إتقانه 🌱'));
+  document.getElementById('todayCount').textContent=total?done+' من '+total:'';
+  document.getElementById('todayList').innerHTML=td.length?td.map(taskCard).join(''):'<div class="empty"><div class="ico">🌤️</div><p>لا توجد مهام اليوم.<br>اضغط «مهمة جديدة» وابدأ.</p></div>';
+
+  /* الكل */
+  let list=tasks.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  if(filter==='pending')list=list.filter(t=>!t.done);
+  if(filter==='done')list=list.filter(t=>t.done);
+  const groups={};
+  list.forEach(t=>{const k=isToday(t)?'اليوم':new Date(t.createdAt).toLocaleDateString('ar',{day:'numeric',month:'long'});(groups[k]=groups[k]||[]).push(t)});
+  document.getElementById('allList').innerHTML=list.length?Object.entries(groups).map(([d,arr])=>'<div class="sec-head" style="margin-top:8px"><h2>'+esc(d)+'</h2><span class="count">'+arr.length+' مهمة</span></div>'+arr.map(taskCard).join('')).join(''):'<div class="empty"><div class="ico">📭</div><p>ما فيه مهام هنا بعد.</p></div>';
+
+  /* الإحصائيات */
+  const allDone=tasks.filter(t=>t.done).length;
+  document.getElementById('stTodayPct').innerHTML=pct+'<small>%</small>';
+  document.getElementById('stTotal').textContent=tasks.length;
+  document.getElementById('stDone').textContent=allDone;
+  document.getElementById('stRem').textContent=tasks.filter(t=>!t.done&&t.reminder).length;
+  renderWeek();
+  updateBell();
+}
+function renderWeek(){
+  const days=['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+  const wrap=document.getElementById('weekBars');let html='';
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const key=d.toDateString();
+    const dayTasks=tasks.filter(t=>t.createdAt&&new Date(t.createdAt).toDateString()===key);
+    const p=dayTasks.length?Math.round(dayTasks.filter(t=>t.done).length/dayTasks.length*100):0;
+    html+='<div class="bar-col'+(i===0?' today':'')+'"><span class="pct">'+p+'%</span><div class="bar" style="height:'+Math.max(p,4)+'%"></div><span class="day">'+days[d.getDay()]+'</span></div>';
+  }
+  wrap.innerHTML=html;
+}
+function updateBell(){
+  const active=tasks.some(t=>!t.done&&t.reminder);
+  document.getElementById('bellDot').hidden=!active;
+}
+
+/* ===== التفاعل مع المهام ===== */
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.task');if(!card)return;
+  const t=tasks.find(x=>x.id===card.dataset.id);if(!t)return;
+  if(e.target.closest('[data-act="toggle"]')){t.done=!t.done;t.completedAt=t.done?Date.now():null;save();render();}
+  else if(e.target.closest('[data-act="del"]')){tasks=tasks.filter(x=>x.id!==t.id);save();render();toast('حُذفت المهمة');}
+});
+document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{
+  filter=b.dataset.f;
+  document.querySelectorAll('.filters button').forEach(x=>x.classList.toggle('on',x===b));
+  render();
+}));
+
+/* ===== النافذة المنبثقة ===== */
+const overlay=document.getElementById('overlay'),sheet=document.getElementById('sheet');
+function openSheet(){overlay.classList.add('open');sheet.classList.add('open');setTimeout(()=>document.getElementById('taskText').focus(),300);}
+function closeSheet(){overlay.classList.remove('open');sheet.classList.remove('open');}
+document.getElementById('fabBtn').addEventListener('click',openSheet);
+overlay.addEventListener('click',closeSheet);
+document.getElementById('prioRow').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;selPrio=b.dataset.p;
+  document.querySelectorAll('#prioRow button').forEach(x=>x.className='');
+  b.className='on-'+selPrio;
+});
+const remToggle=document.getElementById('remToggle'),remWrap=document.getElementById('remWrap');
+remToggle.addEventListener('change',()=>{remWrap.hidden=!remToggle.checked;if(remToggle.checked&&!remTime.value)remTime.value='08:00';});
+
+/* ===== صلاحيات الإشعارات ===== */
+async function ensureNotifPermission(){
+  if(!('Notification' in window))return 'unsupported';
+  try{
+    if(Notification.permission==='default')return await Notification.requestPermission();
+    return Notification.permission;
+  }catch(e){return 'denied'}
+}
+document.getElementById('bellBtn').addEventListener('click',async()=>{
+  const p=await ensureNotifPermission();
+  if(p==='granted')toast('🔔 الإشعارات مفعّلة على جهازك');
+  else if(p==='denied')toast('الإشعارات مرفوضة — التذكير يظهر داخل التطبيق');
+  else toast('التذكيرات تعمل داخل التطبيق');
+});
+
+/* ===== إضافة مهمة ===== */
+const remTime=document.getElementById('remTime');
+document.getElementById('addBtn').addEventListener('click',()=>{
+  const text=document.getElementById('taskText').value.trim();
+  if(!text){toast('اكتب اسم المهمة أولًا');return;}
+  let reminder=null,wantPerm=false;
+  if(remToggle.checked){
+    reminder=remTime.value||null;
+    if(!reminder){toast('حدد وقت التذكير');return;}
+    wantPerm=true;
+  }
+  tasks.push({id:uid(),text,priority:selPrio,done:false,createdAt:Date.now(),completedAt:null,reminder,lastFired:null});
+  save();render();closeSheet();
+  document.getElementById('taskText').value='';remToggle.checked=false;remWrap.hidden=true;
+  if(wantPerm){
+    ensureNotifPermission().then(p=>{
+      if(p==='granted')toast('🔔 راح يوصلك تذكير في وقته');
+      else if(p==='denied')toast('فعّل إشعارات التطبيق من إعدادات الجهاز');
+      else toast('التذكير راح يظهر داخل التطبيق');
+    });
+  }
+});
+
+/* ===== محرك التذكيرات ===== */
+let audioCtx=null;
+function beep(){try{
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  const t0=audioCtx.currentTime;
+  [0,.28].forEach(off=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type='sine';o.frequency.value=880;
+    g.gain.setValueAtTime(.001,t0+off);
+    g.gain.exponentialRampToValueAtTime(.22,t0+off+.03);
+    g.gain.exponentialRampToValueAtTime(.001,t0+off+.22);
+    o.connect(g).connect(audioCtx.destination);o.start(t0+off);o.stop(t0+off+.24);
+  });
+}catch(e){}}
+
+let bannerTask=null,bannerTimer=null;
+const banner=document.getElementById('notifBanner');
+function showBanner(task,missed){
+  bannerTask=task;
+  document.getElementById('notifTitle').textContent=missed?'فوّت تذكير':'تذكير من يومي';
+  document.getElementById('notifText').textContent=task.text;
+  banner.classList.add('show');
+  clearTimeout(bannerTimer);
+  bannerTimer=setTimeout(hideBanner,20000);
+}
+function hideBanner(){banner.classList.remove('show');bannerTask=null;}
+document.getElementById('notifLater').addEventListener('click',hideBanner);
+document.getElementById('notifDone').addEventListener('click',()=>{
+  if(bannerTask){bannerTask.done=true;bannerTask.completedAt=Date.now();save();render();}
+  hideBanner();toast('أحسنت! مهمة منجزة ✓');
+});
+
+function fireReminder(task,missed){
+  beep();
+  try{navigator.vibrate&&navigator.vibrate([300,120,300])}catch(e){}
+  showBanner(task,missed);
+  try{
+    if('Notification' in window&&Notification.permission==='granted'){
+      new Notification('يومي — '+(missed?'فوّت تذكير':'تذكير'),{body:task.text});
+    }
+  }catch(e){}
+}
+function checkReminders(){
+  const now=new Date(),t=todayStr();
+  const cur=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  let changed=false;
+  tasks.forEach(task=>{
+    if(task.done||!task.reminder||task.lastFired===t)return;
+    if(task.reminder<=cur){
+      const missed=(now.getHours()*60+now.getMinutes())-(parseInt(task.reminder.slice(0,2),10)*60+parseInt(task.reminder.slice(3,5),10))>60;
+      task.lastFired=t;changed=true;fireReminder(task,missed);
+    }
+  });
+  if(changed)save();
+}
+setInterval(checkReminders,20000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReminders();});
+
+/* ===== توست ===== */
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ===== تشغيل ===== */
+render();
+checkReminders();
+</script>
+</body>
+</html>
