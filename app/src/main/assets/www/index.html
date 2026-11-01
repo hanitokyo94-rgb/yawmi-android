@@ -257,6 +257,20 @@ const KEY='yawmi_tasks_v1';
 let tasks=[]; try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){tasks=[]}
 let filter='all', selPrio='med', currentScreen='today';
 const save=()=>localStorage.setItem(KEY,JSON.stringify(tasks));
+
+/* ===== الجسر الأصلي (إشعارات النظام حتى والتطبيق مقفل) ===== */
+const Native=(typeof window.YawmiNative!=='undefined')?window.YawmiNative:null;
+function nextOccurrence(hm){
+  const p=hm.split(':'),t=new Date();
+  t.setHours(parseInt(p[0],10),parseInt(p[1],10),0,0);
+  if(t.getTime()<=Date.now())t.setDate(t.getDate()+1);
+  return t.getTime();
+}
+function nativeSchedule(t){
+  if(!Native||!t.reminder||t.done)return;
+  try{Native.schedule(t.id,t.text,nextOccurrence(t.reminder));}catch(e){}
+}
+function nativeCancel(id){if(Native){try{Native.cancel(id);}catch(e){}}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -343,8 +357,8 @@ function updateBell(){
 document.addEventListener('click',e=>{
   const card=e.target.closest('.task');if(!card)return;
   const t=tasks.find(x=>x.id===card.dataset.id);if(!t)return;
-  if(e.target.closest('[data-act="toggle"]')){t.done=!t.done;t.completedAt=t.done?Date.now():null;save();render();}
-  else if(e.target.closest('[data-act="del"]')){tasks=tasks.filter(x=>x.id!==t.id);save();render();toast('حُذفت المهمة');}
+  if(e.target.closest('[data-act="toggle"]')){t.done=!t.done;t.completedAt=t.done?Date.now():null;if(t.done)nativeCancel(t.id);else nativeSchedule(t);save();render();}
+  else if(e.target.closest('[data-act="del"]')){nativeCancel(t.id);tasks=tasks.filter(x=>x.id!==t.id);save();render();toast('حُذفت المهمة');}
 });
 document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{
   filter=b.dataset.f;
@@ -375,6 +389,11 @@ async function ensureNotifPermission(){
   }catch(e){return 'denied'}
 }
 document.getElementById('bellBtn').addEventListener('click',async()=>{
+  if(Native){
+    if(Native.hasNotifPermission())toast('🔔 إشعارات النظام مفعّلة — التذكير يوصلك حتى والتطبيق مقفل');
+    else{Native.requestNotifPermission();toast('اسمح بالإشعارات عشان يوصلك التذكير برا التطبيق');}
+    return;
+  }
   const p=await ensureNotifPermission();
   if(p==='granted')toast('🔔 الإشعارات مفعّلة على جهازك');
   else if(p==='denied')toast('الإشعارات مرفوضة — التذكير يظهر داخل التطبيق');
@@ -394,13 +413,20 @@ document.getElementById('addBtn').addEventListener('click',()=>{
   }
   tasks.push({id:uid(),text,priority:selPrio,done:false,createdAt:Date.now(),completedAt:null,reminder,lastFired:null});
   save();render();closeSheet();
+  if(reminder)nativeSchedule(tasks[tasks.length-1]);
   document.getElementById('taskText').value='';remToggle.checked=false;remWrap.hidden=true;
   if(wantPerm){
-    ensureNotifPermission().then(p=>{
-      if(p==='granted')toast('🔔 راح يوصلك تذكير في وقته');
-      else if(p==='denied')toast('فعّل إشعارات التطبيق من إعدادات الجهاز');
-      else toast('التذكير راح يظهر داخل التطبيق');
-    });
+    if(Native){
+      const ok=Native.hasNotifPermission();
+      if(!ok)Native.requestNotifPermission();
+      toast(ok?'🔔 راح يوصلك إشعار نظام في وقته حتى والتطبيق مقفل':'اسمح بالإشعارات عشان يوصلك التذكير برا التطبيق');
+    }else{
+      ensureNotifPermission().then(p=>{
+        if(p==='granted')toast('🔔 راح يوصلك تذكير في وقته');
+        else if(p==='denied')toast('فعّل إشعارات التطبيق من إعدادات الجهاز');
+        else toast('التذكير راح يظهر داخل التطبيق');
+      });
+    }
   }
 });
 
@@ -468,6 +494,40 @@ function toast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600);
 }
+
+/* ===== مزامنة «تم ✓» من إشعار النظام ===== */
+if(Native){
+  try{
+    const ids=JSON.parse(Native.getDoneIds()||'[]');
+    if(ids.length){
+      let ch=false;
+      ids.forEach(id=>{const t=tasks.find(x=>x.id===id);if(t&&!t.done){t.done=true;t.completedAt=Date.now();ch=true;}});
+      if(ch){save();Native.clearDoneIds();}
+    }
+  }catch(e){}
+}
+
+/* ===== فتح من الإشعار ===== */
+window.__yawmiOpen=function(id){
+  const t=tasks.find(x=>x.id===id);
+  if(!t)return;
+  currentScreen='all';
+  document.querySelectorAll('.tabbar button').forEach(x=>x.classList.toggle('on',x.dataset.s==='all'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-all').classList.add('active');
+  document.getElementById('barTitle').textContent=titles.all;
+  document.getElementById('fabBtn').style.display='flex';
+  render();
+  setTimeout(()=>{const el=document.querySelector('.task[data-id="'+id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},150);
+  toast('📌 '+t.text);
+};
+(function(){
+  const m=(location.hash||'').match(/task=([^&]+)/);
+  if(m)setTimeout(()=>window.__yawmiOpen(decodeURIComponent(m[1])),300);
+})();
+
+/* ===== إعادة جدولة كل التذكيرات عند التشغيل ===== */
+if(Native){tasks.forEach(t=>{if(!t.done&&t.reminder)nativeSchedule(t);});}
 
 /* ===== تشغيل ===== */
 render();
